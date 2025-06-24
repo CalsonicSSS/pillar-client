@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, Roboto } from 'next/font/google';
 import { ClerkProvider } from '@clerk/nextjs';
 import './globals.css';
+import { AppHeader } from '@/components/AppHeader';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -25,7 +26,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <ClerkProvider>
       <html lang='en'>
-        <body className={`${inter.variable} ${roboto.variable} font-inter antialiased`}>{children}</body>
+        <body className={`${inter.variable} ${roboto.variable} font-inter antialiased`}>
+          <div className='min-h-screen bg-gray-50'>
+            <AppHeader />
+            <main>{children}</main>
+          </div>
+        </body>
       </html>
     </ClerkProvider>
   );

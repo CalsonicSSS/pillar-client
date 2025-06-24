@@ -19,9 +19,8 @@ export function ProjectCard({ project }: ProjectCardProps) {
   const [showEditModal, setShowEditModal] = useState(false);
 
   const handleCardClick = () => {
-    // TODO: Navigate to project detail page
-    console.log('Navigate to project:', project.id);
-    // router.push(`/projects/${project.id}`);
+    // Navigate to project detail page
+    router.push(`/projects/${project.id}`);
   };
 
   const handleActionClick = (e: React.MouseEvent) => {

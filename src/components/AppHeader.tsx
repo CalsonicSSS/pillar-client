@@ -8,7 +8,7 @@ import { Settings, HelpCircle } from 'lucide-react';
 export function AppHeader() {
   return (
     <header className='bg-white border-b border-gray-200 sticky top-0 z-50'>
-      <div className='container mx-auto px-4 max-w-7xl'>
+      <div className='container mx-auto max-w-[1500px]'>
         <div className='flex items-center justify-between h-16'>
           {/* Left side - App branding */}
           <div className='flex items-center gap-8'>

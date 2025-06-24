@@ -25,3 +25,15 @@ export async function getAllProjects(status?: string): Promise<ProjectResponse[]
 
   return await handleApiResponse<ProjectResponse[]>(response);
 }
+
+// Get single project (server-side)
+export async function getProject(projectId: string): Promise<ProjectResponse> {
+  const headers = await getServerAuthHeaders();
+
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+    method: 'GET',
+    headers,
+  });
+
+  return await handleApiResponse<ProjectResponse>(response);
+}
