@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle, XCircle, Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,14 +12,24 @@ export default function OAuthCallbackPage() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Processing Gmail connection...');
+  const hasProcessedRef = useRef(false); // Use ref to prevent duplicate processing
 
   useEffect(() => {
     const handleOAuthCallback = async () => {
+      // Prevent duplicate processing
+      if (hasProcessedRef.current) {
+        console.log('OAuth callback already processed, skipping...');
+        return;
+      }
+      hasProcessedRef.current = true;
+
       try {
         // Extract OAuth parameters from URL
         const code = searchParams.get('code');
         const state = searchParams.get('state'); // This is the channel_id
         const error = searchParams.get('error');
+
+        console.log('Processing OAuth callback - Code:', code?.substring(0, 20) + '...', 'State:', state);
 
         // Check for OAuth errors
         if (error) {
@@ -34,8 +44,6 @@ export default function OAuthCallbackPage() {
           setMessage('Missing OAuth parameters. Please try connecting your Gmail channel again.');
           return;
         }
-
-        console.log('Processing OAuth callback with code and state:', { code: code.substring(0, 20) + '...', state });
 
         // Send OAuth code and state to backend for processing
         const response = await fetch(`${API_BASE_URL}/gmail/channel/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`, {
@@ -59,7 +67,7 @@ export default function OAuthCallbackPage() {
 
         // Auto-redirect after 3 seconds
         setTimeout(() => {
-          redirectToProject(state);
+          redirectToProject();
         }, 3000);
       } catch (err) {
         console.error('OAuth callback error:', err);
@@ -68,10 +76,15 @@ export default function OAuthCallbackPage() {
       }
     };
 
-    handleOAuthCallback();
-  }, [searchParams]);
+    // Add a small delay to ensure component is fully mounted
+    const timeoutId = setTimeout(() => {
+      handleOAuthCallback();
+    }, 100);
 
-  const redirectToProject = (channelId: string) => {
+    return () => clearTimeout(timeoutId);
+  }, []); // Remove searchParams dependency to prevent re-runs
+
+  const redirectToProject = () => {
     // Try to get stored project context from sessionStorage
     const storedProjectId = sessionStorage.getItem('oauth_project_id');
     const storedReturnUrl = sessionStorage.getItem('oauth_return_url');
@@ -93,12 +106,7 @@ export default function OAuthCallbackPage() {
   };
 
   const handleReturnNow = () => {
-    const state = searchParams.get('state');
-    if (state) {
-      redirectToProject(state);
-    } else {
-      router.push('/dashboard');
-    }
+    redirectToProject();
   };
 
   return (
@@ -122,12 +130,12 @@ export default function OAuthCallbackPage() {
               <h2 className='text-xl font-semibold text-gray-900 mb-2'>Success!</h2>
               <p className='text-gray-600 mb-6'>{message}</p>
               <div className='space-y-3'>
-                <Button onClick={handleReturnNow} className='w-full gap-2'>
+                <Button onClick={handleReturnNow} className='w-full gap-2 mb-3'>
                   <ArrowLeft className='h-4 w-4' />
                   Return to Project
                 </Button>
                 <Link href='/dashboard'>
-                  <Button variant='outline' className='w-full'>
+                  <Button variant='outline' className='w-full mb-3'>
                     Go to Dashboard
                   </Button>
                 </Link>
