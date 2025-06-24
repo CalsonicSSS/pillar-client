@@ -1,10 +1,14 @@
-import Image from 'next/image';
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
 
-export default function Home() {
-  return (
-    <div>
-      <h1>Welcome to Pillar</h1>
-      <p>Your one-stop solution for communication management!!!!!!</p>
-    </div>
-  );
+export default async function HomePage() {
+  const { userId } = await auth();
+
+  // If user is authenticated, redirect to dashboard
+  if (userId) {
+    redirect('/dashboard');
+  }
+
+  // If not authenticated, redirect to sign-in
+  redirect('/sign-in');
 }
