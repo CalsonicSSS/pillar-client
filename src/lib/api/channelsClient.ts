@@ -1,16 +1,6 @@
+import { GmailOAuthResponse } from '@/types/oauth';
 import { API_BASE_URL, handleApiResponse } from '../apiBase';
-import { ChannelResponse, ChannelDeletionResponse, GmailChannelInitializeResponse } from '@/types/channel';
-
-export interface GmailOAuthResponse {
-  oauth_url: string;
-  status_message: string;
-  requires_oauth: boolean;
-}
-
-export interface GmailOAuthCallbackResponse {
-  status: string;
-  status_message: string;
-}
+import { ChannelResponse, ChannelDeletionResponse, ChannelInitializeResponse, ChannelMetricsResponse } from '@/types/channel';
 
 // Helper function to create headers with token
 function createAuthHeaders(token: string) {
@@ -45,7 +35,7 @@ export async function getChannel(channelId: string, token: string): Promise<Chan
 }
 
 // Initialize Gmail channel (create + check for existing OAuth)
-export async function initializeGmailChannel(projectId: string, token: string): Promise<GmailChannelInitializeResponse> {
+export async function initializeGmailChannel(projectId: string, token: string): Promise<ChannelInitializeResponse> {
   const headers = createAuthHeaders(token);
 
   const response = await fetch(`${API_BASE_URL}/gmail/channel/initialize/${projectId}`, {
@@ -53,7 +43,7 @@ export async function initializeGmailChannel(projectId: string, token: string): 
     headers,
   });
 
-  return await handleApiResponse<GmailChannelInitializeResponse>(response);
+  return await handleApiResponse<ChannelInitializeResponse>(response);
 }
 
 // Delete channel
@@ -90,4 +80,17 @@ export async function reAuthenticateGmail(token: string): Promise<GmailOAuthResp
   });
 
   return await handleApiResponse<GmailOAuthResponse>(response);
+}
+
+// ----------------------------------------------------------------------------
+
+export async function getChannelMetrics(channelId: string, token: string): Promise<ChannelMetricsResponse> {
+  const headers = createAuthHeaders(token);
+
+  const response = await fetch(`${API_BASE_URL}/channels/${channelId}/metrics`, {
+    method: 'GET',
+    headers,
+  });
+
+  return await handleApiResponse<ChannelMetricsResponse>(response);
 }

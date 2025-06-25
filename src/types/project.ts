@@ -11,3 +11,28 @@ export interface ProjectResponse {
   created_at: string;
   updated_at: string;
 }
+
+export interface ProjectCreate {
+  name: string;
+  description?: string;
+  project_type: 'business' | 'individual';
+  project_context_detail: string;
+  start_date: string;
+}
+
+export interface ProjectUpdate {
+  name?: string;
+  description?: string;
+  status?: 'active' | 'archived';
+  project_context_detail?: string;
+  project_type?: 'business' | 'individual';
+}
+
+// -------------------------------------------
+
+export interface ProjectMetricsResponse {
+  connected_channels_count: number;
+  documents_count: number;
+  contacts_count: number;
+  start_date: string;
+}

@@ -1,5 +1,5 @@
 import { API_BASE_URL, handleApiResponse } from '../apiBase';
-import { ContactResponse, ContactCreate, ContactUpdate, ContactDeletionResponse } from '@/types/contact';
+import { ContactResponse, ContactCreate, ContactUpdate, ContactDeletionResponse, ContactMetricsResponse } from '@/types/contact';
 
 // Helper function to create headers with token
 function createAuthHeaders(token: string) {
@@ -69,4 +69,17 @@ export async function deleteContact(contactId: string, token: string): Promise<C
   });
 
   return await handleApiResponse<ContactDeletionResponse>(response);
+}
+
+// ################################################################################################
+
+export async function getContactMetrics(contactId: string, token: string): Promise<ContactMetricsResponse> {
+  const headers = createAuthHeaders(token);
+
+  const response = await fetch(`${API_BASE_URL}/contacts/${contactId}/metrics`, {
+    method: 'GET',
+    headers,
+  });
+
+  return await handleApiResponse<ContactMetricsResponse>(response);
 }

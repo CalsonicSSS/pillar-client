@@ -21,3 +21,8 @@ export interface ContactDeletionResponse {
   status: string;
   status_message: string;
 }
+
+export interface ContactMetricsResponse {
+  messages_count: number;
+  last_activity?: string; // ISO datetime string
+}

@@ -1,21 +1,5 @@
-import { ProjectResponse } from '@/types/project';
+import { ProjectCreate, ProjectResponse, ProjectUpdate, ProjectMetricsResponse } from '@/types/project';
 import { API_BASE_URL, handleApiResponse } from '../apiBase';
-
-export interface ProjectCreate {
-  name: string;
-  description?: string;
-  project_type: 'business' | 'individual';
-  project_context_detail: string;
-  start_date: string;
-}
-
-export interface ProjectUpdate {
-  name?: string;
-  description?: string;
-  status?: 'active' | 'archived';
-  project_context_detail?: string;
-  project_type?: 'business' | 'individual';
-}
 
 // Helper function to create headers with token
 function createAuthHeaders(token: string) {
@@ -73,4 +57,17 @@ export async function initializeProjectTimelineRecap(projectId: string, token: s
   });
 
   return await handleApiResponse<any>(response);
+}
+
+// ##################################################################################################
+
+export async function getProjectMetrics(projectId: string, token: string): Promise<ProjectMetricsResponse> {
+  const headers = createAuthHeaders(token);
+
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}/metrics`, {
+    method: 'GET',
+    headers,
+  });
+
+  return await handleApiResponse<ProjectMetricsResponse>(response);
 }

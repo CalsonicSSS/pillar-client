@@ -22,7 +22,7 @@ export interface ChannelDeletionResponse {
   status_message: string;
 }
 
-export interface GmailChannelInitializeResponse {
+export interface ChannelInitializeResponse {
   id: string;
   project_id: string;
   channel_type: string;
@@ -31,13 +31,9 @@ export interface GmailChannelInitializeResponse {
   updated_at: string;
 }
 
-export interface GmailOAuthResponse {
-  oauth_url: string;
-  status_message: string;
-  requires_oauth: boolean;
-}
+// ----------------------------------------------------------------------------------
 
-export interface GmailOAuthCallbackResponse {
-  status: string;
-  status_message: string;
+export interface ChannelMetricsResponse {
+  contacts_count: number;
+  messages_count: number;
 }

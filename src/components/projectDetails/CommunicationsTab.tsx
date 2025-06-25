@@ -11,6 +11,8 @@ import { getProjectChannels, initializeGmailChannel, deleteChannel, getGmailOAut
 import { ChannelResponse } from '@/types/channel';
 import { ApiError } from '@/lib/apiBase';
 import { ContactManagement } from './ContactManagement';
+import { getChannelMetrics } from '@/lib/api/channelsClient';
+import { ChannelMetricsResponse } from '@/types/channel';
 
 interface CommunicationsTabProps {
   projectId: string;
@@ -24,6 +26,8 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [addingChannel, setAddingChannel] = useState(false);
   const [connectingChannel, setConnectingChannel] = useState<string | null>(null);
+  const [channelMetrics, setChannelMetrics] = useState<Record<string, ChannelMetricsResponse>>({});
+  const [metricsLoading, setMetricsLoading] = useState<Record<string, boolean>>({});
 
   const fetchChannels = async () => {
     try {
@@ -64,6 +68,45 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
+
+  useEffect(() => {
+    if (channels.length > 0) {
+      const fetchAllChannelMetrics = async () => {
+        const token = await getToken();
+        if (!token) return;
+
+        const newMetrics: Record<string, ChannelMetricsResponse> = {};
+        const newLoading: Record<string, boolean> = {};
+
+        // Set loading state for all channels
+        channels.forEach((channel) => {
+          newLoading[channel.id] = true;
+        });
+        setMetricsLoading(newLoading);
+
+        // Fetch metrics for each channel
+        await Promise.all(
+          channels.map(async (channel) => {
+            try {
+              const metrics = await getChannelMetrics(channel.id, token);
+              newMetrics[channel.id] = metrics;
+            } catch (err) {
+              console.error(`Error fetching metrics for channel ${channel.id}:`, err);
+              // Set default values on error
+              newMetrics[channel.id] = { contacts_count: 0, messages_count: 0 };
+            } finally {
+              newLoading[channel.id] = false;
+            }
+          })
+        );
+
+        setChannelMetrics(newMetrics);
+        setMetricsLoading(newLoading);
+      };
+
+      fetchAllChannelMetrics();
+    }
+  }, [channels, getToken]);
 
   const handleAddChannel = async () => {
     try {
@@ -245,77 +288,82 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
         </div>
       ) : (
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-          {channels.map((channel) => (
-            <Card key={channel.id} className='cursor-pointer hover:shadow-md transition-shadow'>
-              <CardHeader className='pb-3'>
-                <div className='flex items-center justify-between'>
-                  <div className='flex items-center gap-3'>
-                    <div className='w-10 h-10 bg-red-500 text-white rounded-lg flex items-center justify-center'>
-                      <Mail className='h-5 w-5' />
+          {channels.map((channel) => {
+            const metrics = channelMetrics[channel.id];
+            const loading = metricsLoading[channel.id];
+
+            return (
+              <Card key={channel.id} className='cursor-pointer hover:shadow-md transition-shadow'>
+                <CardHeader className='pb-3'>
+                  <div className='flex items-center justify-between'>
+                    <div className='flex items-center gap-3'>
+                      <div className='w-10 h-10 bg-red-500 text-white rounded-lg flex items-center justify-center'>
+                        <Mail className='h-5 w-5' />
+                      </div>
+                      <div>
+                        <CardTitle className='text-base capitalize'>{channel.channel_type}</CardTitle>
+                        <p className='text-sm text-gray-500'>Email Channel</p>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle className='text-base capitalize'>{channel.channel_type}</CardTitle>
-                      <p className='text-sm text-gray-500'>Email Channel</p>
+                    <div className='flex items-center gap-2'>
+                      {channel.is_connected ? (
+                        <Badge variant='default' className='gap-1 bg-green-100 text-green-800 hover:bg-green-100'>
+                          <Check className='h-3 w-3' />
+                          Connected
+                        </Badge>
+                      ) : (
+                        <Badge variant='destructive' className='gap-1'>
+                          <AlertCircle className='h-3 w-3' />
+                          Disconnected
+                        </Badge>
+                      )}
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant='ghost' size='sm' className='h-8 w-8 p-0'>
+                            <MoreHorizontal className='h-4 w-4' />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align='end'>
+                          <DropdownMenuItem onClick={() => handleDeleteChannel(channel.id)}>
+                            <Trash2 className='h-4 w-4 mr-2' />
+                            Delete Channel
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
-                  <div className='flex items-center gap-2'>
-                    {channel.is_connected ? (
-                      <Badge variant='default' className='gap-1 bg-green-100 text-green-800 hover:bg-green-100'>
-                        <Check className='h-3 w-3' />
-                        Connected
-                      </Badge>
-                    ) : (
-                      <Badge variant='destructive' className='gap-1'>
-                        <AlertCircle className='h-3 w-3' />
-                        Disconnected
-                      </Badge>
-                    )}
+                </CardHeader>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant='ghost' size='sm' className='h-8 w-8 p-0'>
-                          <MoreHorizontal className='h-4 w-4' />
+                <CardContent>
+                  <div className='space-y-3'>
+                    <div className='grid grid-cols-2 gap-4 text-sm'>
+                      <div>
+                        <p className='text-gray-500'>Contacts</p>
+                        <p className='font-medium'>{loading ? '...' : metrics ? metrics.contacts_count : '--'}</p>
+                      </div>
+                      <div>
+                        <p className='text-gray-500'>Messages</p>
+                        <p className='font-medium'>{loading ? '...' : metrics ? metrics.messages_count : '--'}</p>
+                      </div>
+                    </div>
+
+                    <div className='pt-2'>
+                      {channel.is_connected ? (
+                        <Button variant='outline' size='sm' className='w-full' onClick={() => handleManageChannel(channel)}>
+                          Manage Channel
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align='end'>
-                        <DropdownMenuItem onClick={() => handleDeleteChannel(channel.id)}>
-                          <Trash2 className='h-4 w-4 mr-2' />
-                          Delete Channel
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent>
-                <div className='space-y-3'>
-                  <div className='grid grid-cols-2 gap-4 text-sm'>
-                    <div>
-                      <p className='text-gray-500'>Contacts</p>
-                      <p className='font-medium'>--</p>
-                    </div>
-                    <div>
-                      <p className='text-gray-500'>Messages</p>
-                      <p className='font-medium'>--</p>
+                      ) : (
+                        <Button variant='default' size='sm' className='w-full' onClick={() => handleConnectChannel(channel.id)} disabled={connectingChannel === channel.id}>
+                          {connectingChannel === channel.id ? 'Connecting...' : 'Connect Channel'}
+                        </Button>
+                      )}
                     </div>
                   </div>
-
-                  <div className='pt-2'>
-                    {channel.is_connected ? (
-                      <Button variant='outline' size='sm' className='w-full' onClick={() => handleManageChannel(channel)}>
-                        Manage Channel
-                      </Button>
-                    ) : (
-                      <Button variant='default' size='sm' className='w-full' onClick={() => handleConnectChannel(channel.id)} disabled={connectingChannel === channel.id}>
-                        {connectingChannel === channel.id ? 'Connecting...' : 'Connect Channel'}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
