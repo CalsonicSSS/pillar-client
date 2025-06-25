@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { getProject } from '@/lib/api/projectsServer';
 import { ApiError } from '@/lib/apiBase';
 import { ProjectTabs } from '@/components/projectDetails/ProjectTabs';
+import { TimelineRecapSidebar } from '@/components/projectDetails/TimelineRecapSidebar';
 import Link from 'next/link';
 
 interface ProjectDetailPageProps {
@@ -91,10 +92,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
       <div className='flex gap-8'>
         {/* Left Sidebar - Timeline Recap */}
         <div className='w-[400px] flex-shrink-0'>
-          <div className='bg-white rounded-lg border border-gray-200 p-6'>
-            <h2 className='font-semibold text-gray-900 mb-4'>Communication Recap</h2>
-            <p className='text-gray-500 text-sm'>Timeline recap will be implemented here</p>
-          </div>
+          <TimelineRecapSidebar projectId={project.id} />
         </div>
 
         {/* Main Content Area - Tabs */}

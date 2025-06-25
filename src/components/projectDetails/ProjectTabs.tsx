@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { CommunicationsTab } from './CommunicationsTab';
 import { DocumentsTab } from './DocumentsTab';
+import { TodosTab } from './TodosTab';
 
 interface ProjectTabsProps {
   projectId: string;
@@ -42,11 +43,7 @@ export function ProjectTabs({ projectId }: ProjectTabsProps) {
       <div className='p-8'>
         {activeTab === 'communications' && <CommunicationsTab projectId={projectId} />}
         {activeTab === 'documents' && <DocumentsTab projectId={projectId} />}
-        {activeTab === 'todos' && (
-          <div className='text-center py-16'>
-            <p className='text-gray-500'>Todo Lists tab will be implemented next</p>
-          </div>
-        )}
+        {activeTab === 'todos' && <TodosTab projectId={projectId} />}
       </div>
     </div>
   );
