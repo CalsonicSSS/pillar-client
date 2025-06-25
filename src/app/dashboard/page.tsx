@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown } from 'lucide-react';
 import { ProjectCard } from '@/components/ProjectCard';
-// import { AppLayout } from '@/components/AppLayout';
 import { getAllProjects } from '@/lib/api/projectsServer';
 import { ProjectResponse } from '@/types/project';
 import { DashboardClient } from '@/components/DashboardClient';
@@ -30,6 +29,10 @@ export default async function DashboardPage() {
   const activeProjects = projects.filter((p) => p.status === 'active');
   const archivedProjects = projects.filter((p) => p.status === 'archived');
 
+  // Auto-expand logic: expand if section has projects, collapse if empty
+  const shouldExpandActive = activeProjects.length > 0;
+  const shouldExpandArchived = archivedProjects.length > 0;
+
   return (
     <div className='container mx-auto py-8 max-w-[1500px]'>
       {/* Header */}
@@ -53,7 +56,7 @@ export default async function DashboardPage() {
         <>
           {/* Active Projects Section */}
           <div className='mb-8'>
-            <Collapsible defaultOpen className='bg-orange-100 rounded-lg'>
+            <Collapsible defaultOpen={shouldExpandActive} className='bg-orange-100 rounded-lg'>
               <CollapsibleTrigger className='w-full p-4 flex items-center justify-between hover:bg-orange-200 transition-colors rounded-lg mb-5'>
                 <div className='flex items-center gap-2'>
                   <span className='font-semibold text-orange-800'>Active</span>
@@ -78,7 +81,7 @@ export default async function DashboardPage() {
 
           {/* Archived Projects Section */}
           <div>
-            <Collapsible className='bg-green-100 rounded-lg'>
+            <Collapsible defaultOpen={shouldExpandArchived} className='bg-green-100 rounded-lg'>
               <CollapsibleTrigger className='w-full p-4 flex items-center justify-between hover:bg-green-200 transition-colors rounded-lg mb-5'>
                 <div className='flex items-center gap-2'>
                   <span className='font-semibold text-green-800'>Archived</span>

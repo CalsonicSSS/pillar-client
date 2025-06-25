@@ -9,6 +9,9 @@ import { useRouter } from 'next/navigation';
 import { MoreHorizontal, Edit, Archive, SendToBack } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ProjectUpdateModal } from './ProjectUpdateModal';
+import { updateProject } from '@/lib/api/projectsClient';
+import { useAuth } from '@clerk/nextjs';
+import { ApiError } from '@/lib/apiBase';
 
 interface ProjectCardProps {
   project: ProjectResponse;
@@ -16,7 +19,9 @@ interface ProjectCardProps {
 
 export function ProjectCard({ project }: ProjectCardProps) {
   const router = useRouter();
+  const { getToken } = useAuth();
   const [showEditModal, setShowEditModal] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   const handleCardClick = () => {
     // Navigate to project detail page
@@ -25,6 +30,37 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   const handleActionClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click when clicking menu
+  };
+
+  const handleArchiveToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+
+    const newStatus = project.status === 'active' ? 'archived' : 'active';
+    const actionText = project.status === 'active' ? 'archive' : 'unarchive';
+
+    if (!confirm(`Are you sure you want to ${actionText} "${project.name}"?`)) {
+      return;
+    }
+
+    try {
+      setUpdating(true);
+
+      const token = await getToken();
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
+      await updateProject(project.id, { status: newStatus }, token);
+
+      // Refresh the page to show updated project status
+      router.refresh();
+    } catch (err) {
+      console.error(`Error ${actionText}ing project:`, err);
+      // TODO: Show error toast/message
+      alert(`Failed to ${actionText} project. Please try again.`);
+    } finally {
+      setUpdating(false);
+    }
   };
 
   return (
@@ -47,7 +83,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                 <div onClick={handleActionClick}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant='ghost' size='sm' className='h-8 w-8 p-0'>
+                      <Button variant='ghost' size='sm' className='h-8 w-8 p-0' disabled={updating}>
                         <MoreHorizontal className='h-4 w-4' />
                       </Button>
                     </DropdownMenuTrigger>
@@ -56,16 +92,16 @@ export function ProjectCard({ project }: ProjectCardProps) {
                         <Edit className='h-4 w-4 mr-2' />
                         Edit Project
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleArchiveToggle} disabled={updating}>
                         {project.status === 'active' ? (
                           <>
                             <Archive className='h-4 w-4 mr-2' />
-                            Archive Project
+                            {updating ? 'Archiving...' : 'Archive Project'}
                           </>
                         ) : (
                           <>
                             <SendToBack className='h-4 w-4 mr-2' />
-                            Unarchive Project
+                            {updating ? 'Unarchiving...' : 'Unarchive Project'}
                           </>
                         )}
                       </DropdownMenuItem>
