@@ -11,9 +11,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Plus, Mail, MoreHorizontal, Edit, Trash2, User, MessageSquare } from 'lucide-react';
 import { getChannelContacts, createContact, updateContact, deleteContact } from '@/lib/api/contactsClient';
+import { fetchGmailMessages } from '@/lib/api/messageFetchClient';
 import { ContactResponse, ContactCreate, ContactUpdate } from '@/types/contact';
 import { ChannelResponse } from '@/types/channel';
+import { GmailMessageFetchRequest } from '@/types/messageFetch';
 import { ApiError } from '@/lib/apiBase';
+import { MessageDisplay } from './MessageDisplay';
 
 interface ContactManagementProps {
   channel: ChannelResponse;
@@ -29,6 +32,9 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedContact, setSelectedContact] = useState<ContactResponse | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [fetchingMessages, setFetchingMessages] = useState(false);
+  const [fetchStatus, setFetchStatus] = useState<string | null>(null);
+  const [viewingMessages, setViewingMessages] = useState<ContactResponse | null>(null);
 
   // Form states
   const [newContactEmail, setNewContactEmail] = useState('');
@@ -70,6 +76,7 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
     try {
       setFormLoading(true);
       setError(null);
+      setFetchStatus(null);
 
       const token = await getToken();
       if (!token) {
@@ -82,15 +89,47 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
         name: newContactName.trim() || undefined,
       };
 
-      await createContact(contactData, token);
+      // Step 1: Create the contact
+      setFetchStatus('Creating contact...');
+      const newContact = await createContact(contactData, token);
+
+      // Step 2: Automatically fetch Gmail messages for this contact
+      setFetchingMessages(true);
+      setFetchStatus('Fetching Gmail message history...');
+
+      try {
+        const fetchRequest: GmailMessageFetchRequest = {
+          project_id: projectId,
+          channel_id: channel.id,
+          contact_ids: [newContact.id],
+        };
+
+        const fetchResponse = await fetchGmailMessages(fetchRequest, token);
+        console.log('Message fetch result:', fetchResponse);
+
+        if (fetchResponse.status === 'success') {
+          setFetchStatus('✅ Contact added and messages fetched successfully!');
+        } else {
+          setFetchStatus('⚠️ Contact added, but some messages may not have been fetched');
+        }
+      } catch (fetchError) {
+        console.error('Error fetching messages:', fetchError);
+        setFetchStatus('⚠️ Contact added, but message fetching failed. You can try re-fetching later.');
+      }
 
       // Reset form
       setNewContactEmail('');
       setNewContactName('');
-      setShowAddModal(false);
 
       // Refresh contacts
       await fetchContacts();
+
+      // Show success message for a bit, then close modal
+      setTimeout(() => {
+        setShowAddModal(false);
+        setFetchStatus(null);
+        setFetchingMessages(false);
+      }, 2000);
     } catch (err) {
       console.error('Error creating contact:', err);
       if (err instanceof ApiError) {
@@ -98,6 +137,8 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
       } else {
         setError('Failed to create contact');
       }
+      setFetchStatus(null);
+      setFetchingMessages(false);
     } finally {
       setFormLoading(false);
     }
@@ -172,12 +213,25 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
     setShowEditModal(true);
   };
 
+  const handleViewMessages = (contact: ContactResponse) => {
+    setViewingMessages(contact);
+  };
+
+  const handleBackFromMessages = () => {
+    setViewingMessages(null);
+  };
+
   if (loading) {
     return (
       <div className='flex items-center justify-center py-16'>
         <div className='text-gray-500'>Loading contacts...</div>
       </div>
     );
+  }
+
+  // Show message display when viewing messages for a contact
+  if (viewingMessages) {
+    return <MessageDisplay contact={viewingMessages} channel={channel} projectId={projectId} onBack={handleBackFromMessages} />;
   }
 
   return (
@@ -264,7 +318,7 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
                     </div>
                   </div>
 
-                  <Button variant='outline' size='sm' className='w-full gap-2'>
+                  <Button variant='outline' size='sm' className='w-full gap-2' onClick={() => handleViewMessages(contact)}>
                     <MessageSquare className='h-4 w-4' />
                     View Messages
                   </Button>
@@ -285,20 +339,52 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
           <form onSubmit={handleAddContact} className='space-y-4'>
             <div className='space-y-2'>
               <Label htmlFor='email'>Email Address *</Label>
-              <Input id='email' type='email' value={newContactEmail} onChange={(e) => setNewContactEmail(e.target.value)} placeholder='contact@example.com' required />
+              <Input
+                id='email'
+                type='email'
+                value={newContactEmail}
+                onChange={(e) => setNewContactEmail(e.target.value)}
+                placeholder='contact@example.com'
+                required
+                disabled={formLoading}
+              />
             </div>
 
             <div className='space-y-2'>
               <Label htmlFor='name'>Contact Name</Label>
-              <Input id='name' value={newContactName} onChange={(e) => setNewContactName(e.target.value)} placeholder='John Doe (optional)' />
+              <Input id='name' value={newContactName} onChange={(e) => setNewContactName(e.target.value)} placeholder='John Doe (optional)' disabled={formLoading} />
             </div>
 
+            {/* Progress Status */}
+            {fetchStatus && (
+              <div className='bg-blue-50 border border-blue-200 rounded-lg p-3'>
+                <p className='text-sm text-blue-800'>{fetchStatus}</p>
+                {fetchingMessages && (
+                  <div className='mt-2'>
+                    <div className='w-full bg-blue-200 rounded-full h-2'>
+                      <div className='bg-blue-600 h-2 rounded-full animate-pulse w-full'></div>
+                    </div>
+                    <p className='text-xs text-blue-600 mt-1'>This may take a few moments...</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className='flex justify-end gap-3 pt-4'>
-              <Button type='button' variant='outline' onClick={() => setShowAddModal(false)} disabled={formLoading}>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => {
+                  setShowAddModal(false);
+                  setFetchStatus(null);
+                  setFetchingMessages(false);
+                }}
+                disabled={formLoading}
+              >
                 Cancel
               </Button>
               <Button type='submit' disabled={formLoading}>
-                {formLoading ? 'Adding...' : 'Add Contact'}
+                {formLoading ? 'Processing...' : 'Add Contact'}
               </Button>
             </div>
           </form>
