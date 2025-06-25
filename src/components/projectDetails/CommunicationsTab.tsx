@@ -5,11 +5,12 @@ import { useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Mail, Check, AlertCircle, Trash2, MoreHorizontal } from 'lucide-react';
+import { Plus, Mail, Check, AlertCircle, Trash2, MoreHorizontal, ArrowLeft } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getProjectChannels, initializeGmailChannel, deleteChannel, getGmailOAuthUrl } from '@/lib/api/channelsClient';
 import { ChannelResponse } from '@/types/channel';
 import { ApiError } from '@/lib/apiBase';
+import { ContactManagement } from './ContactManagement';
 
 interface CommunicationsTabProps {
   projectId: string;
@@ -18,6 +19,7 @@ interface CommunicationsTabProps {
 export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
   const { getToken } = useAuth();
   const [channels, setChannels] = useState<ChannelResponse[]>([]);
+  const [selectedChannel, setSelectedChannel] = useState<ChannelResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [addingChannel, setAddingChannel] = useState(false);
@@ -55,7 +57,6 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // Page became visible again (user returned from OAuth)
         fetchChannels();
       }
     };
@@ -77,14 +78,11 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
       console.log('Initializing Gmail channel for project:', projectId);
       const newChannel = await initializeGmailChannel(projectId, token);
 
-      // Refresh the channels list first
       await fetchChannels();
 
-      // If the channel is not connected, automatically start OAuth flow
       if (!newChannel.is_connected) {
         console.log('Channel created but not connected - starting OAuth flow');
 
-        // Store project context for OAuth return
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('oauth_project_id', projectId);
           sessionStorage.setItem('oauth_return_url', window.location.href);
@@ -114,7 +112,6 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
         throw new Error('No authentication token available');
       }
 
-      // Store project context for OAuth return
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('oauth_project_id', projectId);
         sessionStorage.setItem('oauth_return_url', window.location.href);
@@ -150,6 +147,11 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
 
       await deleteChannel(channelId, token);
       await fetchChannels();
+
+      // Clear selected channel if it was deleted
+      if (selectedChannel?.id === channelId) {
+        setSelectedChannel(null);
+      }
     } catch (err) {
       console.error('Error deleting channel:', err);
       if (err instanceof ApiError) {
@@ -160,6 +162,14 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
     }
   };
 
+  const handleManageChannel = (channel: ChannelResponse) => {
+    setSelectedChannel(channel);
+  };
+
+  const handleBackToChannels = () => {
+    setSelectedChannel(null);
+  };
+
   if (loading) {
     return (
       <div className='flex items-center justify-center py-16'>
@@ -168,6 +178,36 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
     );
   }
 
+  // Show contact management view when a channel is selected
+  if (selectedChannel) {
+    return (
+      <div className='space-y-6'>
+        {/* Header with back navigation */}
+        <div className='flex items-center gap-4'>
+          <Button variant='outline' onClick={handleBackToChannels} className='gap-2'>
+            <ArrowLeft className='h-4 w-4' />
+            Back to Channels
+          </Button>
+          <div className='flex items-center gap-3'>
+            <div className='w-8 h-8 bg-red-500 text-white rounded-lg flex items-center justify-center'>
+              <Mail className='h-4 w-4' />
+            </div>
+            <div>
+              <h3 className='text-lg font-semibold text-gray-900 capitalize'>{selectedChannel.channel_type} Channel</h3>
+              <p className='text-sm text-gray-600'>Manage contacts and conversations</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Contact Management Component */}
+        <div className='bg-white border border-gray-200 rounded-lg p-8'>
+          <ContactManagement channel={selectedChannel} projectId={projectId} />
+        </div>
+      </div>
+    );
+  }
+
+  // Show channels list view (existing code with slight modification)
   return (
     <div className='space-y-6'>
       {/* Header */}
@@ -263,7 +303,7 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
 
                   <div className='pt-2'>
                     {channel.is_connected ? (
-                      <Button variant='outline' size='sm' className='w-full'>
+                      <Button variant='outline' size='sm' className='w-full' onClick={() => handleManageChannel(channel)}>
                         Manage Channel
                       </Button>
                     ) : (
