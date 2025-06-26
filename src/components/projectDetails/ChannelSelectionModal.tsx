@@ -50,7 +50,7 @@ export function ChannelSelectionModal({ open, onOpenChange, onSelectGmail, onSel
       icon: <MessageCircle className='h-8 w-8 text-purple-600' />,
       color: 'bg-purple-50 border-purple-200 hover:bg-purple-100',
       features: ['Channel messages', 'Direct messages', 'File sharing', 'Real-time sync'],
-      status: 'Demo Mode',
+      status: 'Available',
       statusColor: 'bg-blue-100 text-blue-800',
     },
   ];

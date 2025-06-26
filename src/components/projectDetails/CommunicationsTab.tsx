@@ -45,7 +45,20 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
       }
 
       const channelsData = await getProjectChannels(projectId, token);
-      setChannels(channelsData);
+
+      // Load any dummy Slack channels from sessionStorage for this project
+      const dummyChannelsKey = `dummy_slack_channels_${projectId}`;
+      const dummyChannelsJson = sessionStorage.getItem(dummyChannelsKey);
+      const dummyChannels = dummyChannelsJson ? JSON.parse(dummyChannelsJson) : [];
+
+      // Load dummy Slack metrics from sessionStorage
+      const dummyMetricsKey = `dummy_slack_metrics_${projectId}`;
+      const dummyMetricsJson = sessionStorage.getItem(dummyMetricsKey);
+      const dummyMetrics = dummyMetricsJson ? JSON.parse(dummyMetricsJson) : {};
+
+      // Combine real channels with dummy channels
+      setChannels([...channelsData, ...dummyChannels]);
+      setSlackChannelMetrics(dummyMetrics);
     } catch (err) {
       console.error('Error fetching channels:', err);
       if (err instanceof ApiError) {
@@ -119,6 +132,27 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
     }
   }, [channels, getToken, slackChannelMetrics]);
 
+  // Callback function to refresh Gmail channel metrics
+  const handleGmailMetricsRefresh = async (channelId: string) => {
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      // Fetch updated metrics for the specific channel
+      const updatedMetrics = await getChannelMetrics(channelId, token);
+
+      // Update the metrics for this specific channel
+      setChannelMetrics((prev) => ({
+        ...prev,
+        [channelId]: updatedMetrics,
+      }));
+
+      console.log('Gmail channel metrics refreshed:', channelId, updatedMetrics);
+    } catch (err) {
+      console.error('Error refreshing Gmail channel metrics:', err);
+    }
+  };
+
   // Callback function to update Slack channel metrics
   const handleSlackMetricsUpdate = (channelId: string, contactsCount: number, messagesCount: number) => {
     const updatedMetrics = {
@@ -136,6 +170,12 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
       ...prev,
       [channelId]: updatedMetrics,
     }));
+
+    // Save updated metrics to sessionStorage for persistence
+    const dummyMetricsKey = `dummy_slack_metrics_${projectId}`;
+    const existingDummyMetrics = JSON.parse(sessionStorage.getItem(dummyMetricsKey) || '{}');
+    existingDummyMetrics[channelId] = updatedMetrics;
+    sessionStorage.setItem(dummyMetricsKey, JSON.stringify(existingDummyMetrics));
   };
 
   // Open channel selection modal
@@ -211,22 +251,33 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
       setChannels((prev) => [...prev, dummySlackChannel]);
 
       // Set dummy metrics
+      const initialMetrics = {
+        contacts_count: 0,
+        messages_count: 0,
+      };
+
       setChannelMetrics((prev) => ({
         ...prev,
-        [dummySlackChannel.id]: {
-          contacts_count: 0,
-          messages_count: 0,
-        },
+        [dummySlackChannel.id]: initialMetrics,
       }));
 
       // Initialize Slack metrics tracking
       setSlackChannelMetrics((prev) => ({
         ...prev,
-        [dummySlackChannel.id]: {
-          contacts_count: 0,
-          messages_count: 0,
-        },
+        [dummySlackChannel.id]: initialMetrics,
       }));
+
+      // Save dummy channel to sessionStorage for persistence across tab switches
+      const dummyChannelsKey = `dummy_slack_channels_${projectId}`;
+      const existingDummyChannels = JSON.parse(sessionStorage.getItem(dummyChannelsKey) || '[]');
+      existingDummyChannels.push(dummySlackChannel);
+      sessionStorage.setItem(dummyChannelsKey, JSON.stringify(existingDummyChannels));
+
+      // Save dummy metrics to sessionStorage
+      const dummyMetricsKey = `dummy_slack_metrics_${projectId}`;
+      const existingDummyMetrics = JSON.parse(sessionStorage.getItem(dummyMetricsKey) || '{}');
+      existingDummyMetrics[dummySlackChannel.id] = initialMetrics;
+      sessionStorage.setItem(dummyMetricsKey, JSON.stringify(existingDummyMetrics));
 
       console.log('Slack channel created successfully (demo mode)');
     } catch (err) {
@@ -292,6 +343,18 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
           delete newMetrics[channelId];
           return newMetrics;
         });
+
+        // Remove from sessionStorage
+        const dummyChannelsKey = `dummy_slack_channels_${projectId}`;
+        const existingDummyChannels = JSON.parse(sessionStorage.getItem(dummyChannelsKey) || '[]');
+        const updatedDummyChannels = existingDummyChannels.filter((ch: ChannelResponse) => ch.id !== channelId);
+        sessionStorage.setItem(dummyChannelsKey, JSON.stringify(updatedDummyChannels));
+
+        // Remove from dummy metrics in sessionStorage
+        const dummyMetricsKey = `dummy_slack_metrics_${projectId}`;
+        const existingDummyMetrics = JSON.parse(sessionStorage.getItem(dummyMetricsKey) || '{}');
+        delete existingDummyMetrics[channelId];
+        sessionStorage.setItem(dummyMetricsKey, JSON.stringify(existingDummyMetrics));
 
         // Clear selected channel if it was deleted
         if (selectedChannel?.id === channelId) {
@@ -398,7 +461,7 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
 
         {/* Contact Management Component */}
         <div className='bg-white border border-gray-200 rounded-lg p-8'>
-          <ContactManagement channel={selectedChannel} projectId={projectId} onSlackMetricsUpdate={handleSlackMetricsUpdate} />
+          <ContactManagement channel={selectedChannel} projectId={projectId} onSlackMetricsUpdate={handleSlackMetricsUpdate} onGmailMetricsRefresh={handleGmailMetricsRefresh} />
         </div>
       </div>
     );

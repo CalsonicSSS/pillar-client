@@ -22,24 +22,16 @@ interface ContactManagementProps {
   channel: ChannelResponse;
   projectId: string;
   onSlackMetricsUpdate?: (channelId: string, contactsCount: number, messagesCount: number) => void;
+  onGmailMetricsRefresh?: (channelId: string) => void;
 }
 
-// Dummy Slack contact data
-// const DUMMY_SLACK_CONTACTS: ContactResponse[] = [
-//   {
-//     id: 'slack_contact_sarah_chen',
-//     channel_id: 'dummy_channel_id',
-//     account_identifier: '@sarah.chen',
-//     name: 'Sarah Chen',
-//     created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
-//     updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-//   },
-// ];
+// Dummy Slack contact data - starts empty, populated when user adds contacts
+const DUMMY_SLACK_CONTACTS: ContactResponse[] = [];
 
 // Dummy metrics for Slack contacts - starts empty, populated when user adds contacts
-// const DUMMY_SLACK_METRICS: Record<string, ContactMetricsResponse> = {};
+const DUMMY_SLACK_METRICS: Record<string, ContactMetricsResponse> = {};
 
-export function ContactManagement({ channel, projectId, onSlackMetricsUpdate }: ContactManagementProps) {
+export function ContactManagement({ channel, projectId, onSlackMetricsUpdate, onGmailMetricsRefresh }: ContactManagementProps) {
   const { getToken } = useAuth();
   const [contacts, setContacts] = useState<ContactResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -324,6 +316,11 @@ export function ContactManagement({ channel, projectId, onSlackMetricsUpdate }: 
       // Refresh contacts
       await fetchContacts();
 
+      // Refresh parent channel metrics for Gmail
+      if (onGmailMetricsRefresh) {
+        onGmailMetricsRefresh(channel.id);
+      }
+
       // Show success message for a bit, then close modal
       setTimeout(() => {
         setShowAddModal(false);
@@ -435,6 +432,11 @@ export function ContactManagement({ channel, projectId, onSlackMetricsUpdate }: 
 
       await deleteContact(contact.id, token);
       await fetchContacts();
+
+      // Refresh parent channel metrics for Gmail
+      if (onGmailMetricsRefresh) {
+        onGmailMetricsRefresh(channel.id);
+      }
     } catch (err) {
       console.error('Error deleting contact:', err);
       if (err instanceof ApiError) {

@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle, XCircle, Loader2, ArrowLeft } from 'lucide-react';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { API_BASE_URL } from '@/lib/apiBase';
 import Link from 'next/link';
 
-export default function OAuthCallbackPage() {
+function OAuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -82,7 +83,7 @@ export default function OAuthCallbackPage() {
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, []); // Remove searchParams dependency to prevent re-runs
+  }, [searchParams, router]);
 
   const redirectToProject = () => {
     // Try to get stored project context from sessionStorage
@@ -165,5 +166,25 @@ export default function OAuthCallbackPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OAuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
+          <div className='bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-4'>
+            <div className='text-center'>
+              <Loader2 className='h-12 w-12 text-blue-600 mx-auto mb-4 animate-spin' />
+              <h2 className='text-xl font-semibold text-gray-900 mb-2'>Loading...</h2>
+              <p className='text-gray-600'>Processing OAuth callback...</p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <OAuthCallbackContent />
+    </Suspense>
   );
 }
