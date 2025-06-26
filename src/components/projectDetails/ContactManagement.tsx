@@ -4,12 +4,11 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, Mail, MoreHorizontal, Edit, Trash2, User, MessageSquare } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash2, User, MessageSquare } from 'lucide-react';
 import { getChannelContacts, createContact, updateContact, deleteContact } from '@/lib/api/contactsClient';
 import { fetchGmailMessages } from '@/lib/api/messageFetchClient';
 import { ContactResponse, ContactCreate, ContactUpdate, ContactMetricsResponse } from '@/types/contact';
@@ -26,19 +25,19 @@ interface ContactManagementProps {
 }
 
 // Dummy Slack contact data
-const DUMMY_SLACK_CONTACTS: ContactResponse[] = [
-  {
-    id: 'slack_contact_sarah_chen',
-    channel_id: 'dummy_channel_id',
-    account_identifier: '@sarah.chen',
-    name: 'Sarah Chen',
-    created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
-    updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-  },
-];
+// const DUMMY_SLACK_CONTACTS: ContactResponse[] = [
+//   {
+//     id: 'slack_contact_sarah_chen',
+//     channel_id: 'dummy_channel_id',
+//     account_identifier: '@sarah.chen',
+//     name: 'Sarah Chen',
+//     created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
+//     updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+//   },
+// ];
 
 // Dummy metrics for Slack contacts - starts empty, populated when user adds contacts
-const DUMMY_SLACK_METRICS: Record<string, ContactMetricsResponse> = {};
+// const DUMMY_SLACK_METRICS: Record<string, ContactMetricsResponse> = {};
 
 export function ContactManagement({ channel, projectId, onSlackMetricsUpdate }: ContactManagementProps) {
   const { getToken } = useAuth();

@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { CalendarIcon, Plus, CheckCircle2, Circle, Calendar, Sparkles, RefreshCw, Edit3, Save, X, Trash2 } from 'lucide-react';
+import { Plus, CheckCircle2, Calendar, Sparkles, RefreshCw, Edit3, Save, X, Trash2 } from 'lucide-react';
 import { getProjectTodoList, generateProjectTodoList, updateProjectTodoList } from '@/lib/api/todosClient';
 import { TodoListResponse, TodoGenerateRequest, TodoItem } from '@/types/todo';
 import { ApiError } from '@/lib/apiBase';

@@ -11,7 +11,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ProjectUpdateModal } from './ProjectUpdateModal';
 import { updateProject, getProjectMetrics } from '@/lib/api/projectsClient';
 import { useAuth } from '@clerk/nextjs';
-import { ApiError } from '@/lib/apiBase';
 
 interface ProjectCardProps {
   project: ProjectResponse;
@@ -98,10 +97,10 @@ export function ProjectCard({ project }: ProjectCardProps) {
     setShowEditModal(true);
   };
 
-  const handleUpdateSuccess = () => {
-    setShowEditModal(false);
-    router.refresh(); // Refresh to show updated project
-  };
+  // const handleUpdateSuccess = () => {
+  //   setShowEditModal(false);
+  //   router.refresh(); // Refresh to show updated project
+  // };
 
   // Helper function to format date
   const formatStartDate = (dateString: string) => {

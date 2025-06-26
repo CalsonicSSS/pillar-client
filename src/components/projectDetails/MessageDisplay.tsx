@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, MessageSquare, Paperclip, User, Download, Search, Filter, Calendar, MessageCircle } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Paperclip, User, Download, Search, Filter, MessageCircle } from 'lucide-react';
 import { getMessagesWithFilters } from '@/lib/api/messagesClient';
 import { MessageResponse, MessageFilter } from '@/types/message';
 import { ContactResponse } from '@/types/contact';
@@ -238,7 +238,7 @@ export function MessageDisplay({ contact, channel, projectId, onBack }: MessageD
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const handleAttachmentClick = (attachment: any) => {
+  const handleAttachmentClick = (attachment: Record<string, any>) => {
     if (attachment.document_id) {
       // Open attachment in new tab (we'll implement download API later)
       console.log('Opening attachment:', attachment.filename);

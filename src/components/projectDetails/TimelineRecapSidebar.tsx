@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Clock, Sparkles, RefreshCw, MessageSquare, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Clock, Sparkles, MessageSquare, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { getProjectTimelineRecap, generateTimelineRecapSummaries, initializeProjectTimelineRecap } from '@/lib/api/timelineRecapClient';
 import { TimelineRecapResponse, RecapSummaryResponse } from '@/types/timelineRecap';
 import { ApiError } from '@/lib/apiBase';
@@ -139,17 +139,17 @@ export function TimelineRecapSidebar({ projectId }: TimelineRecapSidebarProps) {
   // Helper function to determine if content should be truncated
   const shouldTruncateContent = (content: string) => {
     const lines = content.split('\n').filter((line) => line.trim());
-    return lines.length > 3 || content.length > 200;
+    return lines.length > 2 || content.length > 150;
   };
 
   // Helper function to get truncated content
   const getTruncatedContent = (content: string) => {
     const lines = content.split('\n').filter((line) => line.trim());
-    if (lines.length > 4) {
-      return lines.slice(0, 3).join('\n') + '...';
+    if (lines.length > 2) {
+      return lines.slice(0, 2).join('\n') + '...';
     }
-    if (content.length > 300) {
-      return content.substring(0, 200) + '...';
+    if (content.length > 150) {
+      return content.substring(0, 150) + '...';
     }
     return content;
   };

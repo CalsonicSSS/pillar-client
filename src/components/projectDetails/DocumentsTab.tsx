@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Upload, FileText, Image, File, Download, Trash2, Search, Filter, MoreHorizontal, Paperclip, Calendar, FolderOpen, Plus } from 'lucide-react';
+import { Upload, FileText, Image, File, Download, Trash2, Search, MoreHorizontal, Paperclip, Calendar, FolderOpen, Plus } from 'lucide-react';
 import { getProjectDocuments, uploadDocument, deleteDocument, getDocumentDownload } from '@/lib/api/documentsClient';
 import { DocumentResponse } from '@/types/document';
 import { ApiError } from '@/lib/apiBase';
@@ -333,7 +333,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
                 </div>
 
                 <div>
-                  <CardTitle className='text-sm font-medium leading-tight mb-2'>{document.original_file_name || document.safe_file_name}</CardTitle>
+                  <CardTitle className='text-sm font-medium leading-tight mb-2 break-words'>{document.original_file_name || document.safe_file_name}</CardTitle>{' '}
                   <p className='text-xs text-gray-500 mb-3'>{formatFileSize(document.file_size)}</p>
                 </div>
               </CardHeader>

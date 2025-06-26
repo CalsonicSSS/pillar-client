@@ -48,7 +48,7 @@ export async function updateProject(projectId: string, updateData: ProjectUpdate
 }
 
 // Initialize timeline recap for project
-export async function initializeProjectTimelineRecap(projectId: string, token: string): Promise<any> {
+export async function initializeProjectTimelineRecap(projectId: string, token: string): Promise<Record<string, any>> {
   const headers = createAuthHeaders(token);
 
   const response = await fetch(`${API_BASE_URL}/timeline-recap/project/${projectId}/initialize`, {
@@ -56,7 +56,7 @@ export async function initializeProjectTimelineRecap(projectId: string, token: s
     headers,
   });
 
-  return await handleApiResponse<any>(response);
+  return await handleApiResponse<Record<string, any>>(response);
 }
 
 // ##################################################################################################

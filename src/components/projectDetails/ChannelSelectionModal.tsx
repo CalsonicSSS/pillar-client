@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Mail, MessageCircle, ArrowRight, Check, Star } from 'lucide-react';
+import { Mail, MessageCircle, ArrowRight, Check } from 'lucide-react';
 
 interface ChannelSelectionModalProps {
   open: boolean;
