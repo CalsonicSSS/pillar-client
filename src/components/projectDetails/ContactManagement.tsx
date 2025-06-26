@@ -12,20 +12,35 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Plus, Mail, MoreHorizontal, Edit, Trash2, User, MessageSquare } from 'lucide-react';
 import { getChannelContacts, createContact, updateContact, deleteContact } from '@/lib/api/contactsClient';
 import { fetchGmailMessages } from '@/lib/api/messageFetchClient';
-import { ContactResponse, ContactCreate, ContactUpdate } from '@/types/contact';
+import { ContactResponse, ContactCreate, ContactUpdate, ContactMetricsResponse } from '@/types/contact';
 import { ChannelResponse } from '@/types/channel';
 import { GmailMessageFetchRequest } from '@/types/messageFetch';
 import { ApiError } from '@/lib/apiBase';
 import { MessageDisplay } from './MessageDisplay';
 import { getContactMetrics } from '@/lib/api/contactsClient';
-import { ContactMetricsResponse } from '@/types/contact';
 
 interface ContactManagementProps {
   channel: ChannelResponse;
   projectId: string;
+  onSlackMetricsUpdate?: (channelId: string, contactsCount: number, messagesCount: number) => void;
 }
 
-export function ContactManagement({ channel, projectId }: ContactManagementProps) {
+// Dummy Slack contact data
+const DUMMY_SLACK_CONTACTS: ContactResponse[] = [
+  {
+    id: 'slack_contact_sarah_chen',
+    channel_id: 'dummy_channel_id',
+    account_identifier: '@sarah.chen',
+    name: 'Sarah Chen',
+    created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
+    updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+  },
+];
+
+// Dummy metrics for Slack contacts - starts empty, populated when user adds contacts
+const DUMMY_SLACK_METRICS: Record<string, ContactMetricsResponse> = {};
+
+export function ContactManagement({ channel, projectId, onSlackMetricsUpdate }: ContactManagementProps) {
   const { getToken } = useAuth();
   const [contacts, setContacts] = useState<ContactResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,11 +60,30 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
   const [newContactName, setNewContactName] = useState('');
   const [editContactName, setEditContactName] = useState('');
 
+  // Check if this is a Slack channel
+  const isSlackChannel = channel.channel_type === 'slack';
+
   const fetchContacts = async () => {
     try {
       setLoading(true);
       setError(null);
 
+      if (isSlackChannel) {
+        // Handle Slack with dummy data - always start empty
+        console.log('Loading Slack contacts (starts empty)...');
+
+        // Simulate loading delay
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // Always start with empty contacts for Slack channels
+        setContacts([]);
+        setContactMetrics({});
+
+        console.log('Slack contacts loaded (empty state)');
+        return;
+      }
+
+      // Handle Gmail with real API calls
       const token = await getToken();
       if (!token) {
         throw new Error('No authentication token available');
@@ -74,7 +108,7 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
   }, [channel.id]);
 
   useEffect(() => {
-    if (contacts.length > 0) {
+    if (contacts.length > 0 && !isSlackChannel) {
       const fetchAllContactMetrics = async () => {
         const token = await getToken();
         if (!token) return;
@@ -110,7 +144,7 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
 
       fetchAllContactMetrics();
     }
-  }, [contacts, getToken]);
+  }, [contacts, getToken, isSlackChannel]);
 
   // Helper function to format last activity date
   const formatLastActivity = (lastActivity?: string) => {
@@ -120,9 +154,13 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
       const date = new Date(lastActivity);
       const now = new Date();
       const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+      const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
 
-      if (diffInDays === 0) {
-        return 'Today';
+      if (diffInHours < 24) {
+        if (diffInHours < 1) {
+          return 'Just now';
+        }
+        return `${diffInHours}h ago`;
       } else if (diffInDays === 1) {
         return 'Yesterday';
       } else if (diffInDays < 7) {
@@ -144,6 +182,103 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
       setError(null);
       setFetchStatus(null);
 
+      if (isSlackChannel) {
+        // Handle Slack contact creation with dummy data
+        setFetchStatus('Adding Slack contact...');
+
+        // Simulate API delay for contact creation
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        const username = newContactEmail.trim().startsWith('@') ? newContactEmail.trim() : `@${newContactEmail.trim()}`;
+        const contactName = newContactName.trim();
+
+        let newSlackContact: ContactResponse;
+        let newContactMetrics: ContactMetricsResponse;
+
+        // If adding @sarah.chen specifically, use pre-defined data
+        if (username.toLowerCase() === '@sarah.chen') {
+          newSlackContact = {
+            id: 'slack_contact_sarah_chen',
+            channel_id: channel.id,
+            account_identifier: '@sarah.chen',
+            name: contactName || 'Sarah Chen',
+            created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
+            updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+          };
+
+          newContactMetrics = {
+            messages_count: 6,
+            last_activity: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+          };
+
+          // Step 2: Simulate Slack message fetching (like Gmail flow)
+          setFetchingMessages(true);
+          setFetchStatus('Fetching Slack message history...');
+
+          setContacts((prev) => [...prev, newSlackContact]);
+          setContactMetrics((prev) => ({
+            ...prev,
+            [newSlackContact.id]: newContactMetrics,
+          }));
+
+          // Update parent component's channel metrics for Slack
+          if (onSlackMetricsUpdate) {
+            const currentContactCount = contacts.length + 1; // +1 for the new contact
+            const messageCount = username.toLowerCase() === '@sarah.chen' ? 6 : 0;
+            onSlackMetricsUpdate(channel.id, currentContactCount, messageCount);
+          }
+
+          // Simulate 3-second message fetching delay
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+
+          setFetchStatus('✅ Contact added and messages fetched successfully!');
+        } else {
+          // For other contacts, create with default empty data
+          newSlackContact = {
+            id: `slack_contact_${Date.now()}`,
+            channel_id: channel.id,
+            account_identifier: username,
+            name: contactName || undefined,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+
+          newContactMetrics = {
+            messages_count: 0,
+            last_activity: undefined,
+          };
+
+          // Add to contacts and metrics
+          setContacts((prev) => [...prev, newSlackContact]);
+          setContactMetrics((prev) => ({
+            ...prev,
+            [newSlackContact.id]: newContactMetrics,
+          }));
+
+          // Update parent component's channel metrics for Slack
+          if (onSlackMetricsUpdate) {
+            const currentContactCount = contacts.length + 1; // +1 for the new contact
+            onSlackMetricsUpdate(channel.id, currentContactCount, 0); // Other contacts have 0 messages
+          }
+
+          setFetchStatus('✅ Slack contact added successfully!');
+        }
+
+        // Reset form
+        setNewContactEmail('');
+        setNewContactName('');
+
+        // Show success message for a bit, then close modal
+        setTimeout(() => {
+          setShowAddModal(false);
+          setFetchStatus(null);
+          setFetchingMessages(false);
+        }, 2000);
+
+        return;
+      }
+
+      // Handle Gmail contact creation (existing logic)
       const token = await getToken();
       if (!token) {
         throw new Error('No authentication token available');
@@ -218,6 +353,21 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
       setFormLoading(true);
       setError(null);
 
+      if (isSlackChannel) {
+        // Handle Slack contact update with dummy data
+        await new Promise((resolve) => setTimeout(resolve, 800));
+
+        setContacts((prev) =>
+          prev.map((contact) => (contact.id === selectedContact.id ? { ...contact, name: editContactName.trim() || undefined, updated_at: new Date().toISOString() } : contact))
+        );
+
+        setEditContactName('');
+        setSelectedContact(null);
+        setShowEditModal(false);
+        return;
+      }
+
+      // Handle Gmail contact update (existing logic)
       const token = await getToken();
       if (!token) {
         throw new Error('No authentication token available');
@@ -256,6 +406,29 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
     try {
       setError(null);
 
+      if (isSlackChannel) {
+        // Handle Slack contact deletion with dummy data
+        const updatedContacts = contacts.filter((c) => c.id !== contact.id);
+        setContacts(updatedContacts);
+
+        // Remove from metrics
+        const newMetrics = { ...contactMetrics };
+        delete newMetrics[contact.id];
+        setContactMetrics(newMetrics);
+
+        // Update parent component's channel metrics for Slack
+        if (onSlackMetricsUpdate) {
+          // Calculate total messages for remaining contacts
+          const totalMessages = updatedContacts.reduce((sum, c) => {
+            const metrics = newMetrics[c.id];
+            return sum + (metrics ? metrics.messages_count : 0);
+          }, 0);
+          onSlackMetricsUpdate(channel.id, updatedContacts.length, totalMessages);
+        }
+        return;
+      }
+
+      // Handle Gmail contact deletion (existing logic)
       const token = await getToken();
       if (!token) {
         throw new Error('No authentication token available');
@@ -285,6 +458,16 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
 
   const handleBackFromMessages = () => {
     setViewingMessages(null);
+  };
+
+  // Get placeholder text based on channel type
+  const getContactPlaceholder = () => {
+    return isSlackChannel ? '@username or user.name' : 'contact@example.com';
+  };
+
+  // Get input label based on channel type
+  const getContactLabel = () => {
+    return isSlackChannel ? 'Slack Username *' : 'Email Address *';
   };
 
   if (loading) {
@@ -346,8 +529,8 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
                 <CardHeader className='pb-3'>
                   <div className='flex items-center justify-between'>
                     <div className='flex items-center gap-3'>
-                      <div className='w-10 h-10 bg-blue-500 text-white rounded-lg flex items-center justify-center font-semibold'>
-                        {contact.name ? contact.name.charAt(0).toUpperCase() : contact.account_identifier.charAt(0).toUpperCase()}
+                      <div className='w-10 h-10 bg-purple-500 text-white rounded-lg flex items-center justify-center font-semibold'>
+                        {contact.name ? contact.name.charAt(0).toUpperCase() : contact.account_identifier.charAt(1).toUpperCase()}
                       </div>
                       <div className='flex-1 min-w-0'>
                         <CardTitle className='text-base truncate'>{contact.name || 'Unnamed Contact'}</CardTitle>
@@ -409,13 +592,13 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
 
           <form onSubmit={handleAddContact} className='space-y-4'>
             <div className='space-y-2'>
-              <Label htmlFor='email'>Email Address *</Label>
+              <Label htmlFor='email'>{getContactLabel()}</Label>
               <Input
                 id='email'
-                type='email'
+                type={isSlackChannel ? 'text' : 'email'}
                 value={newContactEmail}
                 onChange={(e) => setNewContactEmail(e.target.value)}
-                placeholder='contact@example.com'
+                placeholder={getContactPlaceholder()}
                 required
                 disabled={formLoading}
               />
@@ -471,9 +654,9 @@ export function ContactManagement({ channel, projectId }: ContactManagementProps
 
           <form onSubmit={handleEditContact} className='space-y-4'>
             <div className='space-y-2'>
-              <Label htmlFor='edit-email'>Email Address</Label>
+              <Label htmlFor='edit-email'>{isSlackChannel ? 'Slack Username' : 'Email Address'}</Label>
               <Input id='edit-email' value={selectedContact?.account_identifier || ''} disabled className='bg-gray-50' />
-              <p className='text-xs text-gray-500'>Email address cannot be changed</p>
+              <p className='text-xs text-gray-500'>{isSlackChannel ? 'Username' : 'Email address'} cannot be changed</p>
             </div>
 
             <div className='space-y-2'>

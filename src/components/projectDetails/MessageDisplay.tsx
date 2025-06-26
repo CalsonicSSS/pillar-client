@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, MessageSquare, Paperclip, User, Download, Search, Filter, Calendar } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Paperclip, User, Download, Search, Filter, Calendar, MessageCircle } from 'lucide-react';
 import { getMessagesWithFilters } from '@/lib/api/messagesClient';
 import { MessageResponse, MessageFilter } from '@/types/message';
 import { ContactResponse } from '@/types/contact';
@@ -21,6 +21,122 @@ interface MessageDisplayProps {
   projectId: string;
   onBack: () => void;
 }
+
+// Dummy Slack messages for Sarah Chen
+const DUMMY_SLACK_MESSAGES: MessageResponse[] = [
+  {
+    id: 'slack_msg_1',
+    platform_message_id: 'slack_1',
+    contact_id: 'slack_contact_sarah_chen',
+    sender_account: '@sarah.chen',
+    recipient_accounts: ['@you'],
+    cc_accounts: [],
+    subject: undefined,
+    body_text:
+      'Hey! Just finished reviewing the Q1 financial statements you sent over. Overall they look great, but I noticed a few discrepancies in the expense categories that we should discuss.',
+    body_html: undefined,
+    registered_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+    thread_id: 'slack_thread_1',
+    is_read: true,
+    is_from_contact: true,
+    attachments: [],
+    created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'slack_msg_2',
+    platform_message_id: 'slack_2',
+    contact_id: 'slack_contact_sarah_chen',
+    sender_account: '@you',
+    recipient_accounts: ['@sarah.chen'],
+    cc_accounts: [],
+    subject: undefined,
+    body_text: 'Thanks for the quick review! What specific discrepancies did you find? I want to make sure we address them before the board meeting next week.',
+    body_html: undefined,
+    registered_at: new Date(Date.now() - 3.5 * 60 * 60 * 1000).toISOString(), // 3.5 hours ago
+    thread_id: 'slack_thread_1',
+    is_read: true,
+    is_from_contact: false,
+    attachments: [],
+    created_at: new Date(Date.now() - 3.5 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 3.5 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'slack_msg_3',
+    platform_message_id: 'slack_3',
+    contact_id: 'slack_contact_sarah_chen',
+    sender_account: '@sarah.chen',
+    recipient_accounts: ['@you'],
+    cc_accounts: [],
+    subject: undefined,
+    body_text:
+      'The main issues are in the travel and consulting expenses. Some items that look like consulting fees are categorized under travel, and vice versa. Also, there are a couple of vendor payments that might need to be reclassified.',
+    body_html: undefined,
+    registered_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
+    thread_id: 'slack_thread_1',
+    is_read: true,
+    is_from_contact: true,
+    attachments: [],
+    created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'slack_msg_4',
+    platform_message_id: 'slack_4',
+    contact_id: 'slack_contact_sarah_chen',
+    sender_account: '@you',
+    recipient_accounts: ['@sarah.chen'],
+    cc_accounts: [],
+    subject: undefined,
+    body_text: "Got it! Can you send me a list of the specific line items? I'll review them this afternoon and we can schedule a call tomorrow to go through the corrections.",
+    body_html: undefined,
+    registered_at: new Date(Date.now() - 2.5 * 60 * 60 * 1000).toISOString(), // 2.5 hours ago
+    thread_id: 'slack_thread_1',
+    is_read: true,
+    is_from_contact: false,
+    attachments: [],
+    created_at: new Date(Date.now() - 2.5 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 2.5 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'slack_msg_5',
+    platform_message_id: 'slack_5',
+    contact_id: 'slack_contact_sarah_chen',
+    sender_account: '@sarah.chen',
+    recipient_accounts: ['@you'],
+    cc_accounts: [],
+    subject: undefined,
+    body_text:
+      "Perfect! I'll compile the list and send it over within the hour. Also, should we include the updated depreciation schedule in our discussion? I noticed some equipment purchases that might affect it.",
+    body_html: undefined,
+    registered_at: new Date(Date.now() - 2.2 * 60 * 60 * 1000).toISOString(), // 2.2 hours ago
+    thread_id: 'slack_thread_1',
+    is_read: true,
+    is_from_contact: true,
+    attachments: [],
+    created_at: new Date(Date.now() - 2.2 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 2.2 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'slack_msg_6',
+    platform_message_id: 'slack_6',
+    contact_id: 'slack_contact_sarah_chen',
+    sender_account: '@you',
+    recipient_accounts: ['@sarah.chen'],
+    cc_accounts: [],
+    subject: undefined,
+    body_text:
+      "Yes, definitely include the depreciation schedule! That's a great catch. Let's make sure everything is aligned before we present to the board. Thanks for being so thorough with this review.",
+    body_html: undefined,
+    registered_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+    thread_id: 'slack_thread_1',
+    is_read: true,
+    is_from_contact: false,
+    attachments: [],
+    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  },
+];
 
 export function MessageDisplay({ contact, channel, projectId, onBack }: MessageDisplayProps) {
   const { getToken } = useAuth();
@@ -36,11 +152,33 @@ export function MessageDisplay({ contact, channel, projectId, onBack }: MessageD
   const [messageDirection, setMessageDirection] = useState<'all' | 'from_contact' | 'from_me'>('all');
   const [readStatus, setReadStatus] = useState<'all' | 'read' | 'unread'>('all');
 
+  // Check if this is a Slack channel
+  const isSlackChannel = channel.channel_type === 'slack';
+
   const fetchMessages = async () => {
     try {
       setLoading(true);
       setError(null);
 
+      if (isSlackChannel) {
+        // Handle Slack with dummy messages
+        console.log('Loading Slack messages (demo mode)...');
+
+        // Simulate loading delay
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+
+        // Filter dummy messages for Sarah Chen specifically
+        if (contact.account_identifier === '@sarah.chen') {
+          setMessages(DUMMY_SLACK_MESSAGES);
+        } else {
+          setMessages([]); // Other Slack contacts have no messages
+        }
+
+        console.log('Slack messages loaded (demo mode)');
+        return;
+      }
+
+      // Handle Gmail with real API calls
       const token = await getToken();
       if (!token) {
         throw new Error('No authentication token available');
@@ -81,8 +219,10 @@ export function MessageDisplay({ contact, channel, projectId, onBack }: MessageD
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
 
-    if (diffInHours < 24) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (diffInHours < 1) {
+      return 'Just now';
+    } else if (diffInHours < 24) {
+      return `${Math.floor(diffInHours)}h ago`;
     } else if (diffInHours < 24 * 7) {
       return date.toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
     } else {
@@ -111,6 +251,22 @@ export function MessageDisplay({ contact, channel, projectId, onBack }: MessageD
     return text.substring(0, maxLength) + '...';
   };
 
+  // Get platform-specific display elements
+  const getPlatformIcon = () => {
+    return isSlackChannel ? <MessageCircle className='h-4 w-4' /> : <MessageSquare className='h-3 w-3' />;
+  };
+
+  const getPlatformColor = () => {
+    return isSlackChannel ? 'bg-purple-500' : 'bg-blue-500';
+  };
+
+  const getContactInitial = () => {
+    if (isSlackChannel) {
+      return contact.name ? contact.name.charAt(0).toUpperCase() : contact.account_identifier.charAt(1).toUpperCase();
+    }
+    return contact.name ? contact.name.charAt(0).toUpperCase() : contact.account_identifier.charAt(0).toUpperCase();
+  };
+
   if (loading) {
     return (
       <div className='flex items-center justify-center py-16'>
@@ -129,9 +285,7 @@ export function MessageDisplay({ contact, channel, projectId, onBack }: MessageD
             Back to Contacts
           </Button>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 bg-blue-500 text-white rounded-lg flex items-center justify-center font-semibold'>
-              {contact.name ? contact.name.charAt(0).toUpperCase() : contact.account_identifier.charAt(0).toUpperCase()}
-            </div>
+            <div className={`w-10 h-10 ${getPlatformColor()} text-white rounded-lg flex items-center justify-center font-semibold`}>{getContactInitial()}</div>
             <div>
               <h3 className='text-lg font-semibold text-gray-900'>{contact.name || 'Unnamed Contact'}</h3>
               <p className='text-sm text-gray-600'>{contact.account_identifier}</p>
@@ -141,7 +295,7 @@ export function MessageDisplay({ contact, channel, projectId, onBack }: MessageD
 
         <div className='flex items-center gap-2'>
           <Badge variant='secondary' className='gap-1'>
-            <MessageSquare className='h-3 w-3' />
+            {getPlatformIcon()}
             {
               messages.filter((message) => {
                 const matchesSearch =
@@ -272,8 +426,8 @@ export function MessageDisplay({ contact, channel, projectId, onBack }: MessageD
       {/* Messages List */}
       {messages.length === 0 ? (
         <div className='text-center py-12 border-2 border-dashed border-gray-300 rounded-lg'>
-          <MessageSquare className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-          <h4 className='text-lg font-medium text-gray-900 mb-2'>No messages found</h4>
+          {getPlatformIcon()}
+          <h4 className='text-lg font-medium text-gray-900 mb-2 mt-4'>No messages found</h4>
           <p className='text-gray-600'>No conversation history with this contact yet.</p>
         </div>
       ) : (
@@ -305,16 +459,20 @@ export function MessageDisplay({ contact, channel, projectId, onBack }: MessageD
                 <CardHeader className='pb-3'>
                   <div className='flex items-start justify-between'>
                     <div className='flex items-start gap-3 flex-1 min-w-0'>
-                      <div className='w-8 h-8 bg-gray-500 text-white rounded-lg flex items-center justify-center text-sm font-medium flex-shrink-0'>
-                        {message.is_from_contact ? contact.name ? contact.name.charAt(0).toUpperCase() : 'C' : <User className='h-4 w-4' />}
+                      <div className={`w-8 h-8 ${getPlatformColor()} text-white rounded-lg flex items-center justify-center text-sm font-medium flex-shrink-0`}>
+                        {message.is_from_contact ? getContactInitial() : <User className='h-4 w-4' />}
                       </div>
                       <div className='flex-1 min-w-0'>
                         <div className='flex items-center gap-2 mb-1'>
                           <span className='font-medium text-gray-900 truncate'>{message.is_from_contact ? contact.name || contact.account_identifier : 'You'}</span>
-                          <span className='text-sm text-gray-500'>→</span>
-                          <span className='text-sm text-gray-600 truncate'>{message.recipient_accounts.join(', ')}</span>
+                          {!isSlackChannel && (
+                            <>
+                              <span className='text-sm text-gray-500'>→</span>
+                              <span className='text-sm text-gray-600 truncate'>{message.recipient_accounts.join(', ')}</span>
+                            </>
+                          )}
                         </div>
-                        <h4 className='font-medium text-gray-900 truncate'>{message.subject || '(No Subject)'}</h4>
+                        {message.subject && <h4 className='font-medium text-gray-900 truncate'>{message.subject}</h4>}
                       </div>
                     </div>
                     <div className='flex items-center gap-2 flex-shrink-0 ml-4'>
@@ -330,10 +488,10 @@ export function MessageDisplay({ contact, channel, projectId, onBack }: MessageD
                 </CardHeader>
 
                 <CardContent>
-                  {/* Message Body Preview */}
+                  {/* Message Body */}
                   {message.body_text && (
                     <div className='mb-4'>
-                      <p className='text-gray-700 text-sm leading-relaxed'>{truncateText(message.body_text, 300)}</p>
+                      <p className='text-gray-700 text-sm leading-relaxed'>{isSlackChannel ? message.body_text : truncateText(message.body_text, 300)}</p>
                     </div>
                   )}
 

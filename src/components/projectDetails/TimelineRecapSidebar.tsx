@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Clock, Sparkles, RefreshCw, MessageSquare, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, Sparkles, RefreshCw, MessageSquare, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { getProjectTimelineRecap, generateTimelineRecapSummaries, initializeProjectTimelineRecap } from '@/lib/api/timelineRecapClient';
 import { TimelineRecapResponse, RecapSummaryResponse } from '@/types/timelineRecap';
 import { ApiError } from '@/lib/apiBase';
@@ -21,6 +21,9 @@ export function TimelineRecapSidebar({ projectId }: TimelineRecapSidebarProps) {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // State for tracking expanded cards
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   const fetchTimelineRecap = async () => {
     try {
@@ -133,6 +136,89 @@ export function TimelineRecapSidebar({ projectId }: TimelineRecapSidebarProps) {
     timelineData &&
     (timelineData.recent_activity.some((item) => item.content === 'To be summarized') || timelineData.past_2_weeks.some((item) => item.content === 'To be summarized'));
 
+  // Helper function to determine if content should be truncated
+  const shouldTruncateContent = (content: string) => {
+    const lines = content.split('\n').filter((line) => line.trim());
+    return lines.length > 3 || content.length > 200;
+  };
+
+  // Helper function to get truncated content
+  const getTruncatedContent = (content: string) => {
+    const lines = content.split('\n').filter((line) => line.trim());
+    if (lines.length > 4) {
+      return lines.slice(0, 3).join('\n') + '...';
+    }
+    if (content.length > 300) {
+      return content.substring(0, 200) + '...';
+    }
+    return content;
+  };
+
+  // Toggle card expansion
+  const toggleCardExpansion = (cardId: string) => {
+    const newExpanded = new Set(expandedCards);
+    if (newExpanded.has(cardId)) {
+      newExpanded.delete(cardId);
+    } else {
+      newExpanded.add(cardId);
+    }
+    setExpandedCards(newExpanded);
+  };
+
+  // Render expandable content
+  const renderExpandableContent = (recap: RecapSummaryResponse) => {
+    const isExpanded = expandedCards.has(recap.id);
+    const shouldTruncate = shouldTruncateContent(recap.content);
+    const displayContent = isExpanded || !shouldTruncate ? recap.content : getTruncatedContent(recap.content);
+
+    return (
+      <div className='text-sm text-gray-700'>
+        {recap.content === 'To be summarized' ? (
+          <div className='flex items-center gap-2 text-blue-600'>
+            <Sparkles className='h-3 w-3' />
+            <span className='italic'>Ready to generate summary</span>
+          </div>
+        ) : recap.content === 'Unavailable' ? (
+          <span className='text-gray-400 italic'>No activity during this period</span>
+        ) : (
+          <div className='space-y-1'>
+            {displayContent
+              .split('\n')
+              .filter((line) => line.trim())
+              .map((line, index) => (
+                <div key={index} className='text-sm'>
+                  {line.startsWith('•') ? (
+                    <div className='flex items-start gap-2'>
+                      <span className='text-blue-600 mt-0.5'>•</span>
+                      <span>{line.substring(1).trim()}</span>
+                    </div>
+                  ) : (
+                    <span>{line}</span>
+                  )}
+                </div>
+              ))}
+
+            {shouldTruncate && (
+              <button onClick={() => toggleCardExpansion(recap.id)} className='flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-bold transition-colors mt-3'>
+                {isExpanded ? (
+                  <>
+                    <ChevronUp className='h-3 w-3' />
+                    Show Less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className='h-3 w-3' />
+                    Show More
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className='bg-white rounded-lg border border-gray-200 p-6'>
@@ -187,7 +273,7 @@ export function TimelineRecapSidebar({ projectId }: TimelineRecapSidebarProps) {
               </Badge>
             </div>
 
-            <div className='space-y-2'>
+            <div className='space-y-5'>
               {timelineData.recent_activity.length === 0 ? (
                 <p className='text-gray-500 text-sm italic'>No recent activity</p>
               ) : (
@@ -200,34 +286,7 @@ export function TimelineRecapSidebar({ projectId }: TimelineRecapSidebarProps) {
                           Daily
                         </Badge>
                       </div>
-                      <div className='text-sm text-gray-700'>
-                        {recap.content === 'To be summarized' ? (
-                          <div className='flex items-center gap-2 text-blue-600'>
-                            <Sparkles className='h-3 w-3' />
-                            <span className='italic'>Ready to generate summary</span>
-                          </div>
-                        ) : recap.content === 'Unavailable' ? (
-                          <span className='text-gray-400 italic'>No activity during this period</span>
-                        ) : (
-                          <div className='space-y-1'>
-                            {recap.content
-                              .split('\n')
-                              .filter((line) => line.trim())
-                              .map((line, index) => (
-                                <div key={index} className='text-sm'>
-                                  {line.startsWith('•') ? (
-                                    <div className='flex items-start gap-2'>
-                                      <span className='text-blue-600 mt-0.5'>•</span>
-                                      <span>{line.substring(1).trim()}</span>
-                                    </div>
-                                  ) : (
-                                    <span>{line}</span>
-                                  )}
-                                </div>
-                              ))}
-                          </div>
-                        )}
-                      </div>
+                      {renderExpandableContent(recap)}
                     </CardContent>
                   </Card>
                 ))
@@ -247,7 +306,7 @@ export function TimelineRecapSidebar({ projectId }: TimelineRecapSidebarProps) {
               </Badge>
             </div>
 
-            <div className='space-y-2'>
+            <div className='space-y-5'>
               {timelineData.past_2_weeks.length === 0 ? (
                 <p className='text-gray-500 text-sm italic'>No weekly summaries</p>
               ) : (
@@ -260,34 +319,7 @@ export function TimelineRecapSidebar({ projectId }: TimelineRecapSidebarProps) {
                           Weekly
                         </Badge>
                       </div>
-                      <div className='text-sm text-gray-700'>
-                        {recap.content === 'To be summarized' ? (
-                          <div className='flex items-center gap-2 text-blue-600'>
-                            <Sparkles className='h-3 w-3' />
-                            <span className='italic'>Ready to generate summary</span>
-                          </div>
-                        ) : recap.content === 'Unavailable' ? (
-                          <span className='text-gray-400 italic'>No activity during this period</span>
-                        ) : (
-                          <div className='space-y-1'>
-                            {recap.content
-                              .split('\n')
-                              .filter((line) => line.trim())
-                              .map((line, index) => (
-                                <div key={index} className='text-sm'>
-                                  {line.startsWith('•') ? (
-                                    <div className='flex items-start gap-2'>
-                                      <span className='text-green-600 mt-0.5'>•</span>
-                                      <span>{line.substring(1).trim()}</span>
-                                    </div>
-                                  ) : (
-                                    <span>{line}</span>
-                                  )}
-                                </div>
-                              ))}
-                          </div>
-                        )}
-                      </div>
+                      {renderExpandableContent(recap)}
                     </CardContent>
                   </Card>
                 ))

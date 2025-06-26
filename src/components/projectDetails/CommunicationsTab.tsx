@@ -5,7 +5,7 @@ import { useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Mail, Check, AlertCircle, Trash2, MoreHorizontal, ArrowLeft } from 'lucide-react';
+import { Plus, Mail, Check, AlertCircle, Trash2, MoreHorizontal, ArrowLeft, MessageCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getProjectChannels, initializeGmailChannel, deleteChannel, getGmailOAuthUrl } from '@/lib/api/channelsClient';
 import { ChannelResponse } from '@/types/channel';
@@ -13,6 +13,7 @@ import { ApiError } from '@/lib/apiBase';
 import { ContactManagement } from './ContactManagement';
 import { getChannelMetrics } from '@/lib/api/channelsClient';
 import { ChannelMetricsResponse } from '@/types/channel';
+import { ChannelSelectionModal } from './ChannelSelectionModal';
 
 interface CommunicationsTabProps {
   projectId: string;
@@ -28,6 +29,10 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
   const [connectingChannel, setConnectingChannel] = useState<string | null>(null);
   const [channelMetrics, setChannelMetrics] = useState<Record<string, ChannelMetricsResponse>>({});
   const [metricsLoading, setMetricsLoading] = useState<Record<string, boolean>>({});
+
+  // New state for channel selection modal and Slack metrics tracking
+  const [showChannelSelectionModal, setShowChannelSelectionModal] = useState(false);
+  const [slackChannelMetrics, setSlackChannelMetrics] = useState<Record<string, ChannelMetricsResponse>>({});
 
   const fetchChannels = async () => {
     try {
@@ -88,8 +93,14 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
         await Promise.all(
           channels.map(async (channel) => {
             try {
-              const metrics = await getChannelMetrics(channel.id, token);
-              newMetrics[channel.id] = metrics;
+              if (channel.channel_type === 'slack') {
+                // Use local Slack metrics if available, otherwise default to 0,0
+                newMetrics[channel.id] = slackChannelMetrics[channel.id] || { contacts_count: 0, messages_count: 0 };
+              } else {
+                // Fetch real metrics for Gmail channels
+                const metrics = await getChannelMetrics(channel.id, token);
+                newMetrics[channel.id] = metrics;
+              }
             } catch (err) {
               console.error(`Error fetching metrics for channel ${channel.id}:`, err);
               // Set default values on error
@@ -106,9 +117,36 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
 
       fetchAllChannelMetrics();
     }
-  }, [channels, getToken]);
+  }, [channels, getToken, slackChannelMetrics]);
 
-  const handleAddChannel = async () => {
+  // Callback function to update Slack channel metrics
+  const handleSlackMetricsUpdate = (channelId: string, contactsCount: number, messagesCount: number) => {
+    const updatedMetrics = {
+      contacts_count: contactsCount,
+      messages_count: messagesCount,
+    };
+
+    // Update both the main metrics state and Slack-specific tracking
+    setChannelMetrics((prev) => ({
+      ...prev,
+      [channelId]: updatedMetrics,
+    }));
+
+    setSlackChannelMetrics((prev) => ({
+      ...prev,
+      [channelId]: updatedMetrics,
+    }));
+  };
+
+  // Open channel selection modal
+  const handleAddChannelClick = () => {
+    setShowChannelSelectionModal(true);
+  };
+
+  // Handle Gmail channel selection (existing functionality)
+  const handleSelectGmail = async () => {
+    setShowChannelSelectionModal(false);
+
     try {
       setAddingChannel(true);
       setError(null);
@@ -134,12 +172,66 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
         await handleConnectChannel(newChannel.id);
       }
     } catch (err) {
-      console.error('Error adding channel:', err);
+      console.error('Error adding Gmail channel:', err);
       if (err instanceof ApiError) {
-        setError(`Failed to add channel: ${err.message}`);
+        setError(`Failed to add Gmail channel: ${err.message}`);
       } else {
-        setError('Failed to add channel');
+        setError('Failed to add Gmail channel');
       }
+    } finally {
+      setAddingChannel(false);
+    }
+  };
+
+  // Handle Slack channel selection (dummy implementation for demo)
+  const handleSelectSlack = async () => {
+    setShowChannelSelectionModal(false);
+
+    try {
+      setAddingChannel(true);
+      setError(null);
+
+      // Simulate API call with delay for realistic demo
+      console.log('Creating Slack channel (demo mode)...');
+
+      // Show loading for 2 seconds to simulate real API call
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Create dummy Slack channel
+      const dummySlackChannel: ChannelResponse = {
+        id: `slack_demo_${Date.now()}`,
+        project_id: projectId,
+        channel_type: 'slack',
+        is_connected: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      // Add dummy channel to local state
+      setChannels((prev) => [...prev, dummySlackChannel]);
+
+      // Set dummy metrics
+      setChannelMetrics((prev) => ({
+        ...prev,
+        [dummySlackChannel.id]: {
+          contacts_count: 0,
+          messages_count: 0,
+        },
+      }));
+
+      // Initialize Slack metrics tracking
+      setSlackChannelMetrics((prev) => ({
+        ...prev,
+        [dummySlackChannel.id]: {
+          contacts_count: 0,
+          messages_count: 0,
+        },
+      }));
+
+      console.log('Slack channel created successfully (demo mode)');
+    } catch (err) {
+      console.error('Error adding Slack channel:', err);
+      setError('Failed to add Slack channel');
     } finally {
       setAddingChannel(false);
     }
@@ -183,6 +275,32 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
 
   const handleDeleteChannel = async (channelId: string) => {
     try {
+      const channel = channels.find((c) => c.id === channelId);
+
+      if (channel?.channel_type === 'slack') {
+        // Handle Slack channel deletion (demo mode)
+        setChannels((prev) => prev.filter((c) => c.id !== channelId));
+        setChannelMetrics((prev) => {
+          const newMetrics = { ...prev };
+          delete newMetrics[channelId];
+          return newMetrics;
+        });
+
+        // Remove from Slack metrics tracking
+        setSlackChannelMetrics((prev) => {
+          const newMetrics = { ...prev };
+          delete newMetrics[channelId];
+          return newMetrics;
+        });
+
+        // Clear selected channel if it was deleted
+        if (selectedChannel?.id === channelId) {
+          setSelectedChannel(null);
+        }
+        return;
+      }
+
+      // Handle Gmail channel deletion (real API call)
       const token = await getToken();
       if (!token) {
         throw new Error('No authentication token available');
@@ -213,6 +331,42 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
     setSelectedChannel(null);
   };
 
+  // Helper function to get channel icon
+  const getChannelIcon = (channelType: string) => {
+    switch (channelType) {
+      case 'gmail':
+        return <Mail className='h-5 w-5' />;
+      case 'slack':
+        return <MessageCircle className='h-5 w-5' />;
+      default:
+        return <Mail className='h-5 w-5' />;
+    }
+  };
+
+  // Helper function to get channel color
+  const getChannelColor = (channelType: string) => {
+    switch (channelType) {
+      case 'gmail':
+        return 'bg-red-500';
+      case 'slack':
+        return 'bg-purple-500';
+      default:
+        return 'bg-red-500';
+    }
+  };
+
+  // Helper function to get channel display name
+  const getChannelDisplayName = (channelType: string) => {
+    switch (channelType) {
+      case 'gmail':
+        return 'Gmail';
+      case 'slack':
+        return 'Slack';
+      default:
+        return channelType.charAt(0).toUpperCase() + channelType.slice(1);
+    }
+  };
+
   if (loading) {
     return (
       <div className='flex items-center justify-center py-16'>
@@ -232,11 +386,11 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
             Back to Channels
           </Button>
           <div className='flex items-center gap-3'>
-            <div className='w-8 h-8 bg-red-500 text-white rounded-lg flex items-center justify-center'>
-              <Mail className='h-4 w-4' />
+            <div className={`w-8 h-8 ${getChannelColor(selectedChannel.channel_type)} text-white rounded-lg flex items-center justify-center`}>
+              {getChannelIcon(selectedChannel.channel_type)}
             </div>
             <div>
-              <h3 className='text-lg font-semibold text-gray-900 capitalize'>{selectedChannel.channel_type} Channel</h3>
+              <h3 className='text-lg font-semibold text-gray-900'>{getChannelDisplayName(selectedChannel.channel_type)} Channel</h3>
               <p className='text-sm text-gray-600'>Manage contacts and conversations</p>
             </div>
           </div>
@@ -244,13 +398,13 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
 
         {/* Contact Management Component */}
         <div className='bg-white border border-gray-200 rounded-lg p-8'>
-          <ContactManagement channel={selectedChannel} projectId={projectId} />
+          <ContactManagement channel={selectedChannel} projectId={projectId} onSlackMetricsUpdate={handleSlackMetricsUpdate} />
         </div>
       </div>
     );
   }
 
-  // Show channels list view (existing code with slight modification)
+  // Show channels list view
   return (
     <div className='space-y-6'>
       {/* Header */}
@@ -259,7 +413,7 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
           <h3 className='text-lg font-semibold text-gray-900'>Connected Channels</h3>
           <p className='text-sm text-gray-600'>Manage communication channels for this project</p>
         </div>
-        <Button onClick={handleAddChannel} disabled={addingChannel} className='gap-2'>
+        <Button onClick={handleAddChannelClick} disabled={addingChannel} className='gap-2'>
           <Plus className='h-4 w-4' />
           {addingChannel ? 'Adding...' : 'Add Channel'}
         </Button>
@@ -281,9 +435,9 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
           <Mail className='h-12 w-12 text-gray-400 mx-auto mb-4' />
           <h4 className='text-lg font-medium text-gray-900 mb-2'>No channels connected</h4>
           <p className='text-gray-600 mb-4'>Connect your first communication channel to start managing conversations</p>
-          <Button onClick={handleAddChannel} disabled={addingChannel} className='gap-2'>
+          <Button onClick={handleAddChannelClick} disabled={addingChannel} className='gap-2'>
             <Plus className='h-4 w-4' />
-            {addingChannel ? 'Adding Gmail Channel...' : 'Add Gmail Channel'}
+            {addingChannel ? 'Adding Channel...' : 'Add Communication Channel'}
           </Button>
         </div>
       ) : (
@@ -297,12 +451,12 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
                 <CardHeader className='pb-3'>
                   <div className='flex items-center justify-between'>
                     <div className='flex items-center gap-3'>
-                      <div className='w-10 h-10 bg-red-500 text-white rounded-lg flex items-center justify-center'>
-                        <Mail className='h-5 w-5' />
+                      <div className={`w-10 h-10 ${getChannelColor(channel.channel_type)} text-white rounded-lg flex items-center justify-center`}>
+                        {getChannelIcon(channel.channel_type)}
                       </div>
                       <div>
-                        <CardTitle className='text-base capitalize'>{channel.channel_type}</CardTitle>
-                        <p className='text-sm text-gray-500'>Email Channel</p>
+                        <CardTitle className='text-base'>{getChannelDisplayName(channel.channel_type)}</CardTitle>
+                        <p className='text-sm text-gray-500'>{channel.channel_type === 'slack' ? 'Team Communication' : 'Email Channel'}</p>
                       </div>
                     </div>
                     <div className='flex items-center gap-2'>
@@ -366,6 +520,15 @@ export function CommunicationsTab({ projectId }: CommunicationsTabProps) {
           })}
         </div>
       )}
+
+      {/* Channel Selection Modal */}
+      <ChannelSelectionModal
+        open={showChannelSelectionModal}
+        onOpenChange={setShowChannelSelectionModal}
+        onSelectGmail={handleSelectGmail}
+        onSelectSlack={handleSelectSlack}
+        loading={addingChannel}
+      />
     </div>
   );
 }
